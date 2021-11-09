@@ -1,0 +1,205 @@
+<div lang="ja">
+
+<ul class="links">
+<li>
+<b>起動</b><br>
+I2Pを起動すると、左サイドパネルの<i>ピア</i>セクションの下に表示される<i>アクティブピア</i>の数が、数分のうちに増えていくはずです。
+ルータの準備が整うと、<i>共有クライアント</i>という名の<i>ローカルトンネル</i>が一覧され、また他クライアントやサーバも見えるかもしれません。
+そうならない場合は<a href="#trouble">下記</a>のトラブルシューティングの章を参照してください。
+これら<i>ローカルトンネル</i>がI2Pネットワークへの接続を提供し、BitTorrent、メール、Webプロキシなどのサービスが利用可能になります。
+<a href="/netdb">ネットワークデータベース</a>ではネットワーク上の既知の全ピアを表示しています。
+さらに、既存の<a href="/peers">ピア接続</a>を監視したり、既存<a href="/tunnels">トンネル</a>とその状態を閲覧できます。
+詳しい情報は<a href="/help">ヘルプページ</a>で確認可能。</li>
+
+<li>
+<b>ネットワーク統合</b><br>
+I2Pを起動すると、ルータをネットワークに立ち上げ（統合し）て追加のピアを見つけるまで数分かかります。気長にお待ちください。
+I2Pの起動時、また通常動作中に、サイドパネルのI2Pトンネル構築準備インジケータが、
+I2Pが「トンネルを拒否している」ような表示をするかもしれませんが、これは通常の振る舞いです、
+<i>ローカルトンネル</i>の隣に緑の丸が表示されたら、I2Pで様々なことができるようになります。
+以下でそれらのいくつかを紹介します。</li>
+
+</ul>
+<h3>I2Pにおける諸サービス</h3>
+
+<ul class="links">
+<li>
+<b>Hidden Services and Public Web Browsing</b><br>
+On I2P you can access hidden service websites ("I2P sites") and other services, and you can host your own services.
+You can also access the normal web anonymously via I2P's built-in web proxy (outproxy).
+<a href="https://geti2p.net/en/about/browser-config" target="_blank">Configure your browser</a> to use the HTTP proxy at <code>127.0.0.1 port 4444</code>, then browse to an I2P Site or website at an <code>http://</code> or <code>https://</code> address.
+If you wish to disable or change outproxy access to the non-anonymous internet, remove or modify the outproxy entry for <code>false.i2p</code> under the <i>Outproxies</i> option in the <a href="/i2ptunnel/edit?tunnel=0" target="_blank">I2P HTTP Proxy Tunnel Editor</a>.
+In the "Sites of Interest" section <a href="#eepsites">below</a>, we list a few of the sites hosted on I2P.<br>
+There are also a number of semi-official and unofficial efforts to build browsing tools for I2P,
+including a <a href="https://geti2p.net/en/download/firefox">preconfigured Firefox Browser profile</a>,
+<a href="http://idk.i2p/I2P-in-Private-Browsing-Mode-Firefox">an easy-to-install WebExtension</a>,
+or via <a href="https://www.whonix.org/wiki/I2P">automatic launchers in privacy-focused Linux distributions like Whonix</a>.
+While these are all interesting projects, please evaluate them to see if they fit within your personal threat
+model before trusting them with your well-being.</li>
+
+<li>
+<b>匿名メール</b><br>
+PostmanによるI2P用メールシステムが、<a href="/webmail">I2P組み込みメールクライアント</a>またはお好きな外部メールクライアントからアクセスできます。
+アカウントは通常のインターネットへメールの送受信ができます。アカウントについては <a href="http://hq.postman.i2p/" target="_blank">hq.postman.i2p</a> を参照。</li>
+
+<li>
+<b>匿名ファイル送信</b><br><a href="/torrents">I2PSnark</a> はI2Pに統合されており、匿名の暗号化されたBitTorrent送信を提供します。</li>
+<li>
+<b>Anonymous Chat</b><br>
+Start your IRC client (e.g. HexChat) and connect to the <a href="irc://127.0.0.1:6668/i2p">server</a> at <code>127.0.0.1 port 6668</code>.
+You do not need to configure a proxy in your IRC client; I2P provides you with a local IRC tunnel (configured in your IRC client as an IRC server or remote host).
+Your local I2P IRC tunnel on <code>localhost:6668</code> will direct you to one of three IRC servers hosted on I2P by Postman, echelon and zl0, but neither you nor they know where the other is, and your communcations are encrypted in transit by I2P to prevent interception.
+Once you're there, <code>#i2p-chat</code> and <code>#i2p-dev</code> are just a few of the available channels you may wish to join.
+I2P is also suitable for unmonitorable and uncensorable anonymous chat, as well as alternative IRC servers, Jabber servers, website-based chat, and more.
+You may run your own servers over I2P in whatever flavor you choose, or if you're a developer write your own <a href="http://i2p-projekt.i2p/applications.html" target="_blank">I2P applications</a>.
+Both UDP and TCP protocols are <a href="http://i2p-projekt.i2p/techintro.html#op.transport" target="_blank">supported</a>.</li>
+
+<li>
+<b>フォーラムとブログ</b><br>
+普通のブログ、フォーラム、CMSソフトウェアは全てI2P上で動作するでしょう。
+ただし、設定時セキュリティに関し特別の用心をすること、
+全ての関連ソフトウェア（例えば Php、MySQL、Python、Apache）を最新の状態にしロックすることを推奨します。
+また、I2P上で様々な言語でフォーラムを運営するコミュニティがかなり多数あります； <a href="#eepsites">以下</a>の紹介を参照。</li>
+
+<li>
+<a name="plugins"></a><b>I2P用プラグイン</b><br>
+プラグインをインストールしてI2Pの有用性を拡張してください：
+ブログ、チャット、ファイル共有などのプラグインが既に作成・移植され、あなたの<a href="http://wiki.i2p-projekt.i2p/wiki/index.php/Plugins" target="_blank">インストール</a>を待ち構えています！
+プラグインや関連情報を <a href="http://wiki.i2p-projekt.i2p/wiki/index.php/Plugins" target="_blank">wiki.i2p-projekt.i2p</a> で閲覧してください。
+<a href="http://wiki.i2p-projekt.i2p/wiki/index.php/Plugins" target="_blank">開発者</a>であれば、オリジナルのプラグインを書くための完結したフレームワークが<a href="http://i2p-projekt.i2p/plugins.html" target="_blank">ドキュメント</a>と共に提供されています。</li>
+
+</ul>
+<h3>I2Pにおける匿名の暗号化されたウェブホスティング</h3>
+
+<ul class="links">
+<li>
+<b>組み込みのWebサーバ</b><br>
+I2Pネットワーク上での秘匿サービスWebサイト（「eepsite」）ホスティング用に、I2Pには組み込みのWebサーバが同梱されています：
+<a href="https://www.eclipse.org/jetty/" target="_blank">Jetty</a> インスタンスが <a href="http://127.0.0.1:7658/" target="_blank">http://127.0.0.1:7658/</a> で待ち受けています。
+コンテンツをホスティングするには、
+単にファイルを <code>eepsite/docroot/</code> ディレクトリに
+（または標準的なJSP/Servlet .warファイルなら <code>eepsite/webapps</code> 下に、標準的なCGIスクリプトなら <code>eepsite/cgi-bin</code> 下に）
+置けばそれが表示されます。
+また好きな代替WebサーバプラットフォームをI2P上で動かして組み込みサーバを置きかえたり、別のトンネル上で動かしたりできます。</li>
+
+<li>
+<b>トンネルの開始</b><br>
+設定済みの<a href="/i2ptunnel/" target="_blank">I2Pウェブサーバートンネル</a>を開始すると、あなたのWebサイトが他の人に見えるようになります（ただし発見はできません）。
+Webサイトの開始、.i2pドメインの登録、サイトの宣伝についての詳しい説明は、
+あなたのI2Pウェブサーバを介し <a href="http://127.0.0.1:7658/help/" target="_blank">http://127.0.0.1:7658/help/</a> で閲覧可能です。</li>
+
+</ul>
+<a name="eepsites"></a>
+<h3>興味深いI2Pの秘匿サービス</h3>
+
+<ul class="links twocol">
+<li>
+<b>Invisible Internet Project (I2P) 公式ウェブサイト</b><br><a href="http://i2p-projekt.i2p" target="_blank">i2p-projekt.i2p</a>: <a href="https://geti2p.net/en/" target="_blank">geti2p.net</a>に安全かつ匿名で接続できます。I2Pがどう動作するのか、あるいはどうすれば参加できるのかについて知りたければ、ここが最初に訪れるべき場所です！</li>
+
+<li>
+<b>I2Pコミュニティフォーラム</b><br><a href="http://zzz.i2p/" target="_blank">zzzの開発者フォーラムはI2P開発関連の議論を公開しています。</a>
+
+<a href="http://i2pforum.i2p/" target="_blank">i2pforum.i2p</a>: I2Pに関する問題やアイデア、関連する話題が議論されているフォーラムです。</li>
+
+<li>
+<b>I2P プラネット</b><br><a href="http://planet.i2p/" target="_blank">planet.i2p</a>: I2P周辺のニュースやイベントを集め一箇所にまとめて公開するRSSアグリゲータサイトです。コミュニティの出来事を追うには良いサイトです！</li>
+
+<li>
+<b>I2P ネットワークの状態</b><br><a href="http://stats.i2p/cgi-bin/dashboard.cgi" target="_blank">stats.i2p</a>: zzzが運営する、I2Pネットワークの監視サイトです。ネットワークパフォーマンスの様々な側面をチェックできます。</li>
+
+<li>
+<b>I2P Bug Tracker - GitLab</b><br><a href="http://git.idk.i2p/" target="_blank">git.idk.i2p</a>: I2P's issue reporting and bug-tracking system. Please visit if you have an issue to report, also available at <a href="https://i2pgit.org/" target="_blank">https://i2pgit.org/</a>
+</li>
+
+<li>
+<b>ディスカバー I2P</b><br>
+数多くの秘匿サービスが存在します - このサイトからリンクをたどり、好みのサイトをブックマークし、頻繁に訪ねましょう！<br>
+</li>
+
+</ul>
+<h2 id="trouble">トラブルシューティングと助けを得る方法</h2>
+
+<ul class="links">
+<li>
+<b>辛抱強く待ちましょう</b><br>
+I2Pの初回起動のネットワークへの統合は、ネットワークへの立ち上げとピア探しのため、時間がかかることがあります。
+I2P動作が長いほどパフォーマンスはよくなりますので、
+ルータをできるだけ長く、できれば1日24時間・週7日つけてみてください！
+もし30分後、<i>アクティブ: [接続済/直近]</i> のカウントが依然10ピア未満、あるいは<i>統合</i>ピアの総数が5未満である場合は、問題確認のために行うことがいくつかあります。</li>
+
+<li>
+<b>設定と帯域幅割り当ての確認</b><br>
+I2Pが最もよく機能するのは、<a href="/config">帯域幅設定セクション</a>にあなたのネットワーク接続速度が正確に反映されているときです。
+デフォルトではI2Pは比較的保守的な値に設定されていて、これは多くのユースケースには適しません。
+ですから、時間をかけてこれらの設定を検討し、必要があれば修正してください。
+帯域幅割り当て、<i>特に</i>上り帯域幅が多ければ多いほど、ネットワークから得られる利益は大きくなります。</li>
+
+<li>
+<b>ファイアウォール、モデム、ルータ</b><br>
+可能なら、あなたのモデム・ルータ・PCファイアウォールを適宜設定して、
+インターネットからファイアウォールなしでI2P/Javaにアクセスできるようにしてください。
+厳しいファイアウォール下にあっても、非制限の発信アクセスが可能な場合は、I2Pは依然機能します；
+着信アクセスを停止し、ネットワークに繋げるよう <a href="http://i2p-projekt.i2p/udp.html" target="_blank">SSU IP アドレス検出</a>を使ってください（<a href="https://en.wikipedia.org/wiki/Hole_punching_(networking)" target="_blank">ファイアウォールのホールパンチング</a>）。
+すると、サイドパネルのネットワーク状況に「ネットワーク: ファイアウォール下」と表示されます。
+最適なパフォーマンスのためには、I2Pの<a href="/confignet">外部ポート</a>がインターネットから見えている状態にしてください。
+詳しい情報は下記。</li>
+
+<li>
+<b>プロキシ設定の確認</b><br>
+Webサイトが全く（<a href="http://i2p-projekt.i2p/" target="_blank">i2p-projekt.i2p</a> すら）見られない場合、
+ブラウザのプロキシが（https<i>ではなく</i>、socks<i>でもなく</i>）httpの <code>127.0.0.1 ポート4444</code> 経由に設定されているか確認してください。
+援助が必要な場合は、I2P用のブラウザ設定<a href="https://geti2p.net/en/about/browser-config" target="_blank">ガイド</a>があります。</li>
+
+<li>
+<b>ログの確認</b><br><a href="/logs">ログ</a>が問題解決に役立つかもしれません。
+抜粋を我々のヘルプ用<a href="http://i2pforum.i2p/" target="_blank">フォーラム</a>に貼り付けるか、
+あるいは <a href="http://paste.idk.i2p/" target="_blank">paste</a> に貼り付けて ヘルプ用IRC にリンクを投稿するとよいかもしれません。</li>
+
+<li>
+<b>Java が最新であることの確認</b><br>
+Java が最新であることを確かめてください。
+<a href="/logs">ログページ</a>先頭のJavaバージョンを確認してください。</li>
+<li>
+<b>Problems running on Legacy Hardware</b><br>
+[Linux/BSD] If you can't start the router with <code>i2p/i2prouter start</code> try the <code>runplain.sh</code> script in the same directory.
+Root privileges are never required to run I2P.</li>
+<li>
+<b>Universal Plug and Play（UPnP）の有効化</b><br>
+あなたのモデムまたはルータはおそらく自動ポートフォワーディングのためのUPnPをサポートしています。
+UPnPサポートがモデムやルータで有効になっていることを確認してください。
+それから<a href="/">I2Pルータ</a>を再起動してみてください。
+うまくいっている場合、I2Pルータの初期接続テストが済めば、I2Pは「ネットワーク: OK」とサイドパネルに表示します。</li>
+
+<li>
+<b>ポートフォワーディング</b><br>
+接続しやすくするため（理想的にはUDPとTCPの両方で）、モデム、ルータ、ファイアウォール（群）の<a href="/confignet">I2Pポート</a>を開放してください。
+ポートフォワーディングの方法についての詳しい情報は、Web検索で容易に見つかります。
+万一問題があれば、以下にまとめた我々のフォーラムやIRCチャンネルに援助を依頼するとよいでしょう。
+I2Pはhttpまたはsocksプロキシ経由でのインターネットへの接続をサポートしていないことに注意してください。[パッチ歓迎！]
+ただし、一度ネットワークに繋がればI2P自身を経由してプロキシに接続ができます。</li>
+
+<li>
+<b>オンラインサポート</b><br><a href="http://i2p-projekt.i2p/" target="_blank">I2P Webサイト</a>の情報や<a href="http://i2pforum.i2p/" target="_blank">I2P議論フォーラム</a>への投稿を検討したり、
+I2P内部のIRCネットワーク - Irc2P 上の<a href="irc://127.0.0.1:6668/i2p"> #i2p</a> または <a href="irc://127.0.0.1:6668/i2p-chat">#i2p-chat</a> へ立ち寄ったりするとよいでしょう。
+これらのチャンネルはI2Pの暗号化・匿名ネットワークの外側でも <a href="irc://irc.freenode.net/i2p">Freenode IRC</a>経由で利用可能です。</li>
+
+<li>
+<b>Reporting Bugs</b><br>
+To report a bug, please file a ticket on <a href="http://git.idk.i2p/" target="_blank">git.idk.i2p</a> or, over clearnet, <a href="https://i2pgit.org/" target="_blank">https://i2pgit.org/</a>.
+For developer-related discussions, please visit <a href="http://zzz.i2p/" target="_blank">zzz's developer forums</a> or come and visit the <a href="irc://127.0.0.1:6668/i2p-dev">developer channel</a> on I2P's IRC network.
+Developers can browse source at <a href="http://git.idk.i2p/i2p-hackers/i2p.i2p" target="_blank">git.idk.i2p</a>.</li>
+<li>
+<b>参加しよう！</b><br>
+I2Pは主にコミュニティメンバーの無償で自発的な参加によって開発され維持されています。
+<a href="http://i2p-projekt.i2p/donate.html" target="_blank">寄付</a>は歓迎です。必須のホスティングと管理コストに使われます。
+我々は、開発者の参加の動機となるように、I2Pの要素に対する<a href="http://i2p-projekt.i2p/bounties.html" target="_blank">報奨金</a>を用意しています。
+I2Pを育てるため、<a href="http://i2p-projekt.i2p/newdevelopers.html" target="_blank">Javaコーダー</a>、<a href="http://i2p-projekt.i2p/newtranslators.html" target="_blank">翻訳者</a>、後援者、ユーザを常に求めています。
+I2Pネットワークが大きくなればなるほど、全員へのメリットは増えます。
+ですので、単に友人全員にI2Pについて教える
+（そして必要な場合インストールと設定に手を貸してあげる）だけでも助かります。
+どのように参加すればいいのかについての詳しい情報は、
+Webサイトの<a href="http://i2p-projekt.i2p/getinvolved.html" target="_blank">ボランティアページ</a>を確認してください。</li>
+
+</ul>
+<div class="topness"><a href="#top">[トップへ戻る]</a></div>
+</div>
