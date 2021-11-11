@@ -81,12 +81,13 @@ class SearchUpdateReplyFoundJob extends JobImpl implements ReplyJob {
         }
 
         int type = message.getType();
-        if(_state.getTarget().equals(Young.getHash(getContext().getProperty("custom.query"))))
-            aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " " + getJobId() + " reply message:" + message);
+        Hash usHash = utils.getDestination(getContext().getProperty("custom.selfHS")).getHash();
         if (type == DatabaseStoreMessage.MESSAGE_TYPE) {
             long timeToReply = _state.dataFound(_peer);
             DatabaseStoreMessage msg = (DatabaseStoreMessage) message;
             DatabaseEntry entry = msg.getEntry();
+            if (entry.getHash().equals(usHash))
+                aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + _job.getJobId() + " DatabaseStoreMessage: " + msg);
             try {
                 _facade.store(msg.getKey(), entry);
                 getContext().profileManager().dbLookupSuccessful(_peer, timeToReply);
@@ -102,14 +103,16 @@ class SearchUpdateReplyFoundJob extends JobImpl implements ReplyJob {
                 getContext().profileManager().dbLookupReply(_peer, 0, 0, 1, 0, timeToReply);
             }
         } else if (type == DatabaseSearchReplyMessage.MESSAGE_TYPE) {
-            _job.replyFound((DatabaseSearchReplyMessage) message, _peer);
+            DatabaseSearchReplyMessage msg = (DatabaseSearchReplyMessage) message;
+            _job.replyFound(msg, _peer);
+            if (msg.getSearchKey().equals(usHash))
+                aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + _job.getJobId() + " DatabaseSearchReplyMessage:" + msg);
         } else {
             if (_log.shouldLog(Log.ERROR))
                 _log.error(getJobId() + ": What?! Reply job matched a strange message: " + message);
             return;
         }
-
-        _job.searchNext();
+//        _job.searchNext();
     }
 
     public void setMessage(I2NPMessage message) {

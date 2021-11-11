@@ -17,11 +17,15 @@ import net.i2p.data.i2np.DatabaseStoreMessage;
 import net.i2p.data.router.RouterInfo;
 import net.i2p.data.router.RouterKeyGenerator;
 import net.i2p.router.*;
+import net.i2p.router.client.ClientConnectionRunner;
+import net.i2p.router.client.ClientManagerFacadeImpl;
+import net.i2p.router.message.SendMessageDirectJob;
 import net.i2p.util.ConcurrentHashSet;
 import net.i2p.util.Log;
 import net.i2p.util.SystemVersion;
 
 import static net.i2p.router.utils.getDestination;
+import static net.i2p.router.utils.loadRIFromFile;
 
 /**
  * The network database
@@ -112,15 +116,10 @@ public class FloodfillNetworkDatabaseFacade extends KademliaNetworkDatabaseFacad
         rrj.getTiming().setStartAfter(_context.clock().now() + 5 * 60 * 1000);
         _context.jobQueue().addJob(rrj);
 
-        // @@YOUNG search job
-//        Hash queried = getDestination(_context.getProperty("custom.query")).getHash();
-        Hash queried = Young.getHash(_context.getProperty("custom.query"));
-        Job success = new PrintSuccessJob(_context, "Query hash:" + queried);
-        Job failure = new PrintFailureJob(_context, "Query hash:" + queried);
-        SearchJob sj = new SearchJob(_context, this, queried, success, failure, 12 * 60 * 1000, false, false);
-        sj.getTiming().setStartAfter(_context.clock().now() + 6 * 60 * 1000);
-        _context.jobQueue().addJob(sj);
-        _log.debug("@@YOUNG first run Search Job");
+        // @@YOUNG store and search job
+        LSStoreAndSearchJob ssj = new LSStoreAndSearchJob(_context, this);
+        ssj.getTiming().setStartAfter(_context.clock().now() + 5 * 60 * 1000);
+        _context.jobQueue().addJob(ssj);
     }
 
     @Override

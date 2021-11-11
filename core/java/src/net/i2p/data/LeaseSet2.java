@@ -11,7 +11,6 @@ import java.util.Properties;
 import java.util.Set;
 
 import net.i2p.I2PAppContext;
-import net.i2p.crypto.DSAEngine;
 import net.i2p.crypto.EncType;
 import net.i2p.crypto.SigAlgo;
 import net.i2p.crypto.SigType;
@@ -26,6 +25,17 @@ import net.i2p.util.OrderedProperties;
  * @since 0.9.38
  */
 public class LeaseSet2 extends LeaseSet {
+    // true for testing
+    private static final boolean IGNORE_SERVER_KEY_PREFERENCE = false;
+    private static final int FLAG_OFFLINE_KEYS = 0x01;
+    private static final int FLAG_UNPUBLISHED = 0x02;
+    /**
+     * Set if the unencrypted LS, when published, will be blinded/encrypted
+     *
+     * @since 0.9.42
+     */
+    private static final int FLAG_BLINDED = 0x04;
+    private static final int MAX_KEYS = 8;
     protected int _flags;
     // stored as absolute ms
     protected long _published;
@@ -44,22 +54,32 @@ public class LeaseSet2 extends LeaseSet {
     // If this leaseset was formerly blinded, the blinded hash, so we can find it again
     private Hash _blindedHash;
 
-    // true for testing
-    private static final boolean IGNORE_SERVER_KEY_PREFERENCE = false;
-
-    private static final int FLAG_OFFLINE_KEYS = 0x01;
-    private static final int FLAG_UNPUBLISHED = 0x02;
-    /**
-     *  Set if the unencrypted LS, when published, will be blinded/encrypted
-     *  @since 0.9.42
-     */
-    private static final int FLAG_BLINDED = 0x04;
-    private static final int MAX_KEYS = 8;
-
     public LeaseSet2() {
         super();
         // prevents decryption in super
         _checked = true;
+    }
+
+    /**
+     * Generate a Signature to pass to setOfflineSignature()
+     *
+     * @param expires      absolute ms
+     * @param transientSPK the key that will sign the leaseset
+     * @param priv         the private signing key for the destination
+     * @return null on error
+     */
+    public static Signature offlineSign(long expires, SigningPublicKey transientSPK, SigningPrivateKey priv) {
+        ByteArrayStream baos = new ByteArrayStream(4 + 2 + transientSPK.length());
+        try {
+            DataHelper.writeLong(baos, 4, expires / 1000);
+            DataHelper.writeLong(baos, 2, transientSPK.getType().getCode());
+            transientSPK.writeBytes(baos);
+        } catch (IOException ioe) {
+            return null;
+        } catch (DataFormatException dfe) {
+            return null;
+        }
+        return baos.sign(priv);
     }
 
     /**
@@ -71,6 +91,14 @@ public class LeaseSet2 extends LeaseSet {
      */
     public long getPublished() {
         return _published;
+    }
+
+    public void setPublishedAndExpire(long pub) {
+        if (_signature != null) {
+            throw new IllegalStateException();
+        }
+        _published = pub;
+        _expires = _published + 10 * 60 * 1000;
     }
 
     /**
@@ -89,7 +117,7 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  @throws IllegalStateException if already signed
+     * @throws IllegalStateException if already signed
      */
     public void setUnpublished() {
         if (_signature != null && (_flags & FLAG_UNPUBLISHED) == 0)
@@ -98,30 +126,32 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  Set if the unencrypted LS, when published, will be blinded/encrypted
-     *  @since 0.9.42
+     * Set if the unencrypted LS, when published, will be blinded/encrypted
+     *
+     * @since 0.9.42
      */
     public boolean isBlindedWhenPublished() {
         return (_flags & FLAG_BLINDED) != 0;
     }
 
     /**
-     *  Set if the unencrypted LS, when published, will be blinded/encrypted
-     *  @throws IllegalStateException if already signed
-     *  @since 0.9.42
+     * Set if the unencrypted LS, when published, will be blinded/encrypted
+     *
+     * @throws IllegalStateException if already signed
+     * @since 0.9.42
      */
     public void setBlindedWhenPublished() {
         if (_signature != null && (_flags & FLAG_BLINDED) == 0)
             throw new IllegalStateException();
         _flags |= FLAG_BLINDED;
     }
-    
+
     /**
      * If true, we received this LeaseSet by a remote peer publishing it to
      * us, AND the unpublished flag is not set.
      * Default false.
      *
-     *  @since 0.9.39 overridden
+     * @since 0.9.39 overridden
      */
     @Override
     public boolean getReceivedAsPublished() {
@@ -135,10 +165,10 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  If more than one key, return the first supported one.
-     *  If none supported, return the first one.
+     * If more than one key, return the first supported one.
+     * If none supported, return the first one.
      *
-     *  @since 0.9.39 overridden
+     * @since 0.9.39 overridden
      */
     @Override
     public PublicKey getEncryptionKey() {
@@ -153,11 +183,11 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  If more than one key, return the first supported one.
-     *  If none supported, return null.
+     * If more than one key, return the first supported one.
+     * If none supported, return null.
      *
-     *  @return first supported key or null
-     *  @since 0.9.44
+     * @return first supported key or null
+     * @since 0.9.44
      */
     @Override
     public PublicKey getEncryptionKey(Set<EncType> supported) {
@@ -185,9 +215,9 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  Add an encryption key.
-     *
-     *  Encryption keys should be added in order of server preference, most-preferred first.
+     * Add an encryption key.
+     * <p>
+     * Encryption keys should be added in order of server preference, most-preferred first.
      */
     public void addEncryptionKey(PublicKey key) {
         if (_encryptionKey == null) {
@@ -205,13 +235,13 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  This returns all the keys. getEncryptionKey() returns the first one.
+     * This returns all the keys. getEncryptionKey() returns the first one.
+     * <p>
+     * Encryption keys should be in order of server preference, most-preferred first.
+     * Client behavior should be to select the first key with a supported encryption type.
+     * Clients may use other selection algorithms based on encryption support, relative performance, and other factors.
      *
-     *  Encryption keys should be in order of server preference, most-preferred first.
-     *  Client behavior should be to select the first key with a supported encryption type.
-     *  Clients may use other selection algorithms based on encryption support, relative performance, and other factors.
-     *
-     *  @return not a copy, do not modify, null if none
+     * @return not a copy, do not modify, null if none
      */
     public List<PublicKey> getEncryptionKeys() {
         if (_encryptionKeys != null)
@@ -224,7 +254,7 @@ public class LeaseSet2 extends LeaseSet {
     /**
      * Configure a set of options or statistics that the router can expose.
      * Makes a copy.
-     *
+     * <p>
      * Warning, clears all capabilities, must be called BEFORE addCapability().
      *
      * @param options if null, clears current options
@@ -241,34 +271,43 @@ public class LeaseSet2 extends LeaseSet {
             _options.putAll(options);
     }
 
+    public void setOption(String key, String val) {
+        if (_signature != null)
+            throw new IllegalStateException();
+        if (_options == null)
+            _options = new OrderedProperties();
+        _options.setProperty(key, val);
+    }
+
     public boolean isOffline() {
         return (_flags & FLAG_OFFLINE_KEYS) != 0;
     }
 
     /**
-     *  @return transient public key or null if not offline signed
+     * @return transient public key or null if not offline signed
      */
     public SigningPublicKey getTransientSigningKey() {
         return _transientSigningPublicKey;
     }
 
     /**
-     *  Absolute time, not time from now.
-     *  @return transient expiration time or 0 if not offline signed
-     *  @since 0.9.48
+     * Absolute time, not time from now.
+     *
+     * @return transient expiration time or 0 if not offline signed
+     * @since 0.9.48
      */
     public long getTransientExpiration() {
         return _transientExpires;
     }
 
     /**
-     *  Destination must be previously set.
+     * Destination must be previously set.
      *
-     *  @param expires absolute ms
-     *  @param transientSPK the key that will sign the leaseset
-     *  @param offlineSig the signature by the spk in the destination
-     *  @return success, false if verify failed or expired
-     *  @throws IllegalStateException if already signed
+     * @param expires      absolute ms
+     * @param transientSPK the key that will sign the leaseset
+     * @param offlineSig   the signature by the spk in the destination
+     * @return success, false if verify failed or expired
+     * @throws IllegalStateException if already signed
      */
     public boolean setOfflineSignature(long expires, SigningPublicKey transientSPK, Signature offlineSig) {
         if (_signature != null)
@@ -278,28 +317,6 @@ public class LeaseSet2 extends LeaseSet {
         _transientSigningPublicKey = transientSPK;
         _offlineSignature = offlineSig;
         return verifyOfflineSignature();
-    }
-
-    /**
-     *  Generate a Signature to pass to setOfflineSignature()
-     *
-     *  @param expires absolute ms
-     *  @param transientSPK the key that will sign the leaseset
-     *  @param priv the private signing key for the destination
-     *  @return null on error
-     */
-    public static Signature offlineSign(long expires, SigningPublicKey transientSPK, SigningPrivateKey priv) {
-        ByteArrayStream baos = new ByteArrayStream(4 + 2 + transientSPK.length());
-        try {
-            DataHelper.writeLong(baos, 4, expires / 1000);
-            DataHelper.writeLong(baos, 2, transientSPK.getType().getCode());
-            transientSPK.writeBytes(baos);
-        } catch (IOException ioe) {
-            return null;
-        } catch (DataFormatException dfe) {
-            return null;
-        }
-        return baos.sign(priv);
     }
 
     public boolean verifyOfflineSignature() {
@@ -326,23 +343,23 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     * Set this on creation if known
-     */
-    public void setBlindedHash(Hash bh) {
-        _blindedHash = bh;
-    }
-
-    /**
      * The orignal blinded hash, where this came from.
+     *
      * @return null if unknown or not previously blinded
      */
     public Hash getBlindedHash() {
         return _blindedHash;
     }
 
+    /**
+     * Set this on creation if known
+     */
+    public void setBlindedHash(Hash bh) {
+        _blindedHash = bh;
+    }
+
 
     ///// overrides below here
-
 
     @Override
     public int getType() {
@@ -350,16 +367,17 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  The revocation key. Overridden to do nothing,
-     *  as we're using the _signingKey field for the blinded key in Enc LS2.
+     * The revocation key. Overridden to do nothing,
+     * as we're using the _signingKey field for the blinded key in Enc LS2.
      *
      * @since 0.9.39
      */
     @Override
     public void setSigningKey(SigningPublicKey key) {
-        Log log = I2PAppContext.getGlobalContext().logManager().getLog(LeaseSet2.class);
-        if (log.shouldWarn())
-            log.warn("Don't set revocation key in ls2", new Exception("I did it"));
+//        Log log = I2PAppContext.getGlobalContext().logManager().getLog(LeaseSet2.class);
+//        if (log.shouldWarn())
+//            log.warn("Don't set revocation key in ls2", new Exception("I did it"));
+        _signingKey = key;
     }
 
     /**
@@ -377,7 +395,9 @@ public class LeaseSet2 extends LeaseSet {
         return _expires > now - fudge;
     }
 
-    /** without sig! */
+    /**
+     * without sig!
+     */
     @Override
     protected byte[] getBytes() {
         if (_byteified != null) return _byteified;
@@ -400,11 +420,11 @@ public class LeaseSet2 extends LeaseSet {
             _byteified = rv;
         return rv;
     }
-    
+
     /**
-     *  This does NOT validate the signature
+     * This does NOT validate the signature
      *
-     *  @throws IllegalStateException if called more than once or Destination already set
+     * @throws IllegalStateException if called more than once or Destination already set
      */
     @Override
     public void readBytes(InputStream in) throws DataFormatException, IOException {
@@ -456,7 +476,7 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  Including sig. This does NOT validate the signature
+     * Including sig. This does NOT validate the signature
      */
     @Override
     public void writeBytes(OutputStream out) throws DataFormatException, IOException {
@@ -467,7 +487,7 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  Without sig. This does NOT validate the signature
+     * Without sig. This does NOT validate the signature
      */
     protected void writeBytesWithoutSig(OutputStream out) throws DataFormatException, IOException {
         if (_destination == null || _encryptionKey == null)
@@ -479,7 +499,7 @@ public class LeaseSet2 extends LeaseSet {
     }
 
     /**
-     *  Without sig. This does NOT validate the signature
+     * Without sig. This does NOT validate the signature
      */
     protected void writeBody(OutputStream out) throws DataFormatException, IOException {
         if (_options != null && !_options.isEmpty()) {
@@ -504,7 +524,7 @@ public class LeaseSet2 extends LeaseSet {
             lease.writeBytes(out);
         }
     }
-    
+
     protected void readHeader(InputStream in) throws DataFormatException, IOException {
         _destination = Destination.create(in);
         _published = DataHelper.readLong(in, 4) * 1000;
@@ -550,15 +570,15 @@ public class LeaseSet2 extends LeaseSet {
         _transientSigningPublicKey.writeBytes(out);
         _offlineSignature.writeBytes(out);
     }
-    
+
     /**
-     *  Number of bytes, NOT including signature
+     * Number of bytes, NOT including signature
      */
     @Override
     public int size() {
         int rv = _destination.size()
-             + 10
-             + (_leases.size() * Lease2.LENGTH);
+            + 10
+            + (_leases.size() * Lease2.LENGTH);
         for (PublicKey key : getEncryptionKeys()) {
             rv += 4;
             rv += key.length();
@@ -610,7 +630,7 @@ public class LeaseSet2 extends LeaseSet {
         } catch (IOException ioe) {
             throw new DataFormatException("Signature failed", ioe);
         }
-        // now sign with the key 
+        // now sign with the key
         _signature = out.sign(key);
         if (_signature == null)
             throw new DataFormatException("Signature failed with " + key.getType() + " key");
@@ -619,10 +639,12 @@ public class LeaseSet2 extends LeaseSet {
     /**
      * Verify with the SPK in the dest for online sigs.
      * Verify with the SPK in the offline sig section for offline sigs.
+     *
      * @return valid
      */
     @Override
     public boolean verifySignature() {
+        Log log = new Log(LeaseSet.class);
         if (_signature == null)
             return false;
         // Disallow RSA as it's so slow it could be used as a DoS
@@ -631,6 +653,7 @@ public class LeaseSet2 extends LeaseSet {
             return false;
         SigningPublicKey spk;
         if (isOffline()) {
+            log.debug("isOffline");
             // verify LS2 using offline block's SPK
             // Disallow RSA as it's so slow it could be used as a DoS
             type = _transientSigningPublicKey.getType();
@@ -640,6 +663,7 @@ public class LeaseSet2 extends LeaseSet {
                 return false;
             spk = _transientSigningPublicKey;
         } else {
+            log.debug("NOT isOffline");
             spk = getSigningPublicKey();
         }
         int len = size();
@@ -655,29 +679,32 @@ public class LeaseSet2 extends LeaseSet {
             dfe.printStackTrace();
             return false;
         }
+        log.debug("HERE verifySignature");
         return out.verifySignature(_signature, spk);
     }
-    
+
     @Override
     public boolean equals(Object object) {
         if (object == this) return true;
         if ((object == null) || !(object instanceof LeaseSet2)) return false;
         LeaseSet2 ls = (LeaseSet2) object;
         return
-               DataHelper.eq(_signature, ls.getSignature())
-               && DataHelper.eq(_leases, ls._leases)
-               && DataHelper.eq(getEncryptionKey(), ls.getEncryptionKey())
-               && DataHelper.eq(_destination, ls.getDestination());
+            DataHelper.eq(_signature, ls.getSignature())
+                && DataHelper.eq(_leases, ls._leases)
+                && DataHelper.eq(getEncryptionKey(), ls.getEncryptionKey())
+                && DataHelper.eq(_destination, ls.getDestination());
     }
-    
-    /** the destination has enough randomness in it to use it by itself for speed */
+
+    /**
+     * the destination has enough randomness in it to use it by itself for speed
+     */
     @Override
     public int hashCode() {
         if (_destination == null)
             return 0;
         return _destination.hashCode();
     }
-    
+
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder(128);
@@ -724,84 +751,84 @@ public class LeaseSet2 extends LeaseSet {
     }
 
 /****
-    public static void main(String args[]) throws Exception {
-        if (args.length != 1) {
-            System.out.println("Usage: LeaseSet2 privatekeyfile.dat");
-            System.exit(1);
-        }
-        java.io.File f = new java.io.File(args[0]);
-        PrivateKeyFile pkf = new PrivateKeyFile(f);
-        pkf.createIfAbsent(SigType.EdDSA_SHA512_Ed25519);
-        System.out.println("Online test");
-        java.io.File f2 = new java.io.File("online-ls2.dat");
-        test(pkf, f2, false);
-        System.out.println("Offline test");
-        f2 = new java.io.File("offline-ls2.dat");
-        test(pkf, f2, true);
-    }
+ public static void main(String args[]) throws Exception {
+ if (args.length != 1) {
+ System.out.println("Usage: LeaseSet2 privatekeyfile.dat");
+ System.exit(1);
+ }
+ java.io.File f = new java.io.File(args[0]);
+ PrivateKeyFile pkf = new PrivateKeyFile(f);
+ pkf.createIfAbsent(SigType.EdDSA_SHA512_Ed25519);
+ System.out.println("Online test");
+ java.io.File f2 = new java.io.File("online-ls2.dat");
+ test(pkf, f2, false);
+ System.out.println("Offline test");
+ f2 = new java.io.File("offline-ls2.dat");
+ test(pkf, f2, true);
+ }
 
-    private static void test(PrivateKeyFile pkf, java.io.File outfile, boolean offline) throws Exception {
-        net.i2p.util.RandomSource rand = net.i2p.util.RandomSource.getInstance();
-        long now = System.currentTimeMillis() + 5*60*1000;
-        LeaseSet2 ls2 = new LeaseSet2();
-        for (int i = 0; i < 3; i++) {
-            Lease2 l2 = new Lease2();
-            now += 10000;
-            l2.setEndDate(new java.util.Date(now));
-            byte[] gw = new byte[32];
-            rand.nextBytes(gw);
-            l2.setGateway(new Hash(gw));
-            TunnelId id = new TunnelId(1 + rand.nextLong(TunnelId.MAX_ID_VALUE));
-            l2.setTunnelId(id);
-            ls2.addLease(l2);
-        }
-        Properties opts = new Properties();
-        opts.setProperty("foo", "bar");
-        opts.setProperty("test", "bazzle");
-        ls2.setOptions(opts);
-        ls2.setDestination(pkf.getDestination());
-        SimpleDataStructure encKeys[] = net.i2p.crypto.KeyGenerator.getInstance().generatePKIKeys();
-        PublicKey pubKey = (PublicKey) encKeys[0];
-        ls2.addEncryptionKey(pubKey);
-        net.i2p.crypto.KeyPair encKeys2 = net.i2p.crypto.KeyGenerator.getInstance().generatePKIKeys(net.i2p.crypto.EncType.ECIES_X25519);
-        pubKey = encKeys2.getPublic();
-        ls2.addEncryptionKey(pubKey);
-        byte[] b = new byte[99];
-        rand.nextBytes(b);
-        pubKey = new PublicKey(77, b);
-        ls2.addEncryptionKey(pubKey);
-        b = new byte[55];
-        rand.nextBytes(b);
-        pubKey = new PublicKey(177, b);
-        ls2.addEncryptionKey(pubKey);
-        SigningPrivateKey spk = pkf.getSigningPrivKey();
-        if (offline) {
-            now += 365*24*60*60*1000L;
-            SimpleDataStructure transKeys[] = net.i2p.crypto.KeyGenerator.getInstance().generateSigningKeys(SigType.EdDSA_SHA512_Ed25519);
-            SigningPublicKey transientPub = (SigningPublicKey) transKeys[0];
-            SigningPrivateKey transientPriv = (SigningPrivateKey) transKeys[1];
-            Signature sig = offlineSign(now, transientPub, spk);
-            ls2.setOfflineSignature(now, transientPub, sig);
-            ls2.sign(transientPriv);
-        } else {
-            ls2.sign(spk);
-        }
-        System.out.println("Created: " + ls2);
-        if (!ls2.verifySignature())
-            System.out.println("Verify FAILED");
-        ByteArrayOutputStream out = new ByteArrayOutputStream();
-        ls2.writeBytes(out);
-        java.io.OutputStream out2 = new java.io.FileOutputStream(outfile);
-        ls2.writeBytes(out2);
-        out2.close();
-        java.io.ByteArrayInputStream in = new java.io.ByteArrayInputStream(out.toByteArray());
-        System.out.println("Size calculated: " + (ls2.size() + ls2.getSignature().length()));
-        System.out.println("Size to read in: " + in.available());
-        LeaseSet2 ls3 = new LeaseSet2();
-        ls3.readBytes(in);
-        System.out.println("Read back: " + ls3);
-        if (!ls3.verifySignature())
-            System.out.println("Verify FAILED");
-    }
-****/
+ private static void test(PrivateKeyFile pkf, java.io.File outfile, boolean offline) throws Exception {
+ net.i2p.util.RandomSource rand = net.i2p.util.RandomSource.getInstance();
+ long now = System.currentTimeMillis() + 5*60*1000;
+ LeaseSet2 ls2 = new LeaseSet2();
+ for (int i = 0; i < 3; i++) {
+ Lease2 l2 = new Lease2();
+ now += 10000;
+ l2.setEndDate(new java.util.Date(now));
+ byte[] gw = new byte[32];
+ rand.nextBytes(gw);
+ l2.setGateway(new Hash(gw));
+ TunnelId id = new TunnelId(1 + rand.nextLong(TunnelId.MAX_ID_VALUE));
+ l2.setTunnelId(id);
+ ls2.addLease(l2);
+ }
+ Properties opts = new Properties();
+ opts.setProperty("foo", "bar");
+ opts.setProperty("test", "bazzle");
+ ls2.setOptions(opts);
+ ls2.setDestination(pkf.getDestination());
+ SimpleDataStructure encKeys[] = net.i2p.crypto.KeyGenerator.getInstance().generatePKIKeys();
+ PublicKey pubKey = (PublicKey) encKeys[0];
+ ls2.addEncryptionKey(pubKey);
+ net.i2p.crypto.KeyPair encKeys2 = net.i2p.crypto.KeyGenerator.getInstance().generatePKIKeys(net.i2p.crypto.EncType.ECIES_X25519);
+ pubKey = encKeys2.getPublic();
+ ls2.addEncryptionKey(pubKey);
+ byte[] b = new byte[99];
+ rand.nextBytes(b);
+ pubKey = new PublicKey(77, b);
+ ls2.addEncryptionKey(pubKey);
+ b = new byte[55];
+ rand.nextBytes(b);
+ pubKey = new PublicKey(177, b);
+ ls2.addEncryptionKey(pubKey);
+ SigningPrivateKey spk = pkf.getSigningPrivKey();
+ if (offline) {
+ now += 365*24*60*60*1000L;
+ SimpleDataStructure transKeys[] = net.i2p.crypto.KeyGenerator.getInstance().generateSigningKeys(SigType.EdDSA_SHA512_Ed25519);
+ SigningPublicKey transientPub = (SigningPublicKey) transKeys[0];
+ SigningPrivateKey transientPriv = (SigningPrivateKey) transKeys[1];
+ Signature sig = offlineSign(now, transientPub, spk);
+ ls2.setOfflineSignature(now, transientPub, sig);
+ ls2.sign(transientPriv);
+ } else {
+ ls2.sign(spk);
+ }
+ System.out.println("Created: " + ls2);
+ if (!ls2.verifySignature())
+ System.out.println("Verify FAILED");
+ ByteArrayOutputStream out = new ByteArrayOutputStream();
+ ls2.writeBytes(out);
+ java.io.OutputStream out2 = new java.io.FileOutputStream(outfile);
+ ls2.writeBytes(out2);
+ out2.close();
+ java.io.ByteArrayInputStream in = new java.io.ByteArrayInputStream(out.toByteArray());
+ System.out.println("Size calculated: " + (ls2.size() + ls2.getSignature().length()));
+ System.out.println("Size to read in: " + in.available());
+ LeaseSet2 ls3 = new LeaseSet2();
+ ls3.readBytes(in);
+ System.out.println("Read back: " + ls3);
+ if (!ls3.verifySignature())
+ System.out.println("Verify FAILED");
+ }
+ ****/
 }

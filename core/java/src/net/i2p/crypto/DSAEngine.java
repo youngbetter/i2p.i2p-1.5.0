@@ -109,7 +109,7 @@ public final class DSAEngine {
             try {
                 rv = altVerifySig(signature, signedData, offset, size, verifyingKey);
                 if ((!rv) && _log.shouldLog(Log.WARN))
-                    _log.warn(type + " Sig Verify Fail");
+                    _log.warn(type + " Sig Verify Fail...");
                 return rv;
             } catch (GeneralSecurityException gse) {
                 if (_log.shouldLog(Log.WARN))

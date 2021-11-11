@@ -10,6 +10,7 @@ package net.i2p.router.message;
 
 import java.util.Set;
 
+import net.i2p.client.impl.I2PSessionImpl;
 import net.i2p.crypto.EncType;
 import net.i2p.crypto.SessionKeyManager;
 import net.i2p.data.*;
@@ -20,15 +21,14 @@ import net.i2p.data.i2np.DeliveryStatusMessage;
 import net.i2p.data.i2np.GarlicMessage;
 import net.i2p.data.i2np.I2NPMessage;
 import net.i2p.data.router.RouterInfo;
-import net.i2p.router.LeaseSetKeys;
-import net.i2p.router.RouterContext;
-import net.i2p.router.TunnelInfo;
+import net.i2p.router.*;
+import net.i2p.router.client.ClientConnectionRunner;
+import net.i2p.router.client.ClientManagerFacadeImpl;
 import net.i2p.router.crypto.ratchet.ReplyCallback;
 import net.i2p.router.networkdb.kademlia.MessageWrapper;
 import net.i2p.router.peermanager.PeerManagerFacadeImpl;
 import net.i2p.router.peermanager.PeerProfile;
 import net.i2p.router.peermanager.ProfilePersistenceHelper;
-import net.i2p.router.utils;
 import net.i2p.util.Log;
 
 import static net.i2p.router.utils.aof;
@@ -58,7 +58,6 @@ import static net.i2p.router.utils.loadRIFromFile;
  * The low-level construction is in GarlicMessageBuilder.
  */
 class OutboundClientMessageJobHelper {
-
     private static final long ACK_EXTRA_EXPIRATION = 60 * 1000;
 
     /**
@@ -124,6 +123,7 @@ class OutboundClientMessageJobHelper {
         boolean isECIES = recipientPK.getType() == EncType.ECIES_X25519;
         // force ack off if ECIES
         boolean ackInGarlic = isECIES ? false : requireAck;
+        log.debug("@YOUNG createGarlicMessage dest:" + dest);
         GarlicConfig config = createGarlicConfig(ctx, replyToken, expiration, recipientPK, dataClove,
             from, dest, replyTunnel, ackInGarlic, bundledReplyLeaseSet, skm);
         if (config == null)
@@ -161,6 +161,7 @@ class OutboundClientMessageJobHelper {
                                                    TunnelInfo replyTunnel, boolean requireAck,
                                                    LeaseSet bundledReplyLeaseSet, SessionKeyManager skm) {
         Log log = ctx.logManager().getLog(OutboundClientMessageJobHelper.class);
+        log.debug("@YOUNG in OCMJ createGarlicConfig");
         if (replyToken >= 0 && log.shouldLog(Log.DEBUG))
             log.debug("Reply token: " + replyToken);
         // need random CloveSet ID as it's checked in receiver MessageValidator pre-0.9.44
@@ -172,7 +173,7 @@ class OutboundClientMessageJobHelper {
         // for now, skip this for ratchet if there's no LS to bundle
         if (requireAck && (bundledReplyLeaseSet != null || recipientPK.getType() == EncType.ELGAMAL_2048)) {
             // extend the expiration of the return message
-            log.debug("@YOUNG createGarlicConfig requireAck");
+            log.debug("@YOUNG createGarlicConfig buildAckClove");
             PayloadGarlicConfig ackClove = buildAckClove(ctx, from, replyTunnel, replyToken,
                 expiration + ACK_EXTRA_EXPIRATION, skm);
             if (ackClove == null)
@@ -193,38 +194,23 @@ class OutboundClientMessageJobHelper {
             config.addClove(dataClove);
 
         if (ctx.getBooleanProperty("custom.enableQuery")
-            && dest.equals(utils.getDestination(ctx.getProperty("custom.HSB64")))) {
-            log.debug("@YOUNG createGarlicConfig bundledRI");
-            RouterInfo storeRI = new RouterInfo(ctx.router().getRouterInfo(), utils.getFormatTime());
-            if (storeRI.isValid()) {
-                log.debug("not sign SUCCESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS");
-            }else{
-                log.debug("not sign FAILLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
-            }
-            // set capacity and sign
-            try {
-                storeRI.setPublished(ctx.clock().now());
-                SigningPrivateKey key = ctx.keyManager().getSigningPrivateKey();
-                storeRI.sign(key);
-                ctx.router().setRouterInfo(storeRI);
-                aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " store RI " + storeRI + "when visit " + dest.calculateHash().toBase64());
-                PayloadGarlicConfig riClove = buildRouterInfoClove(ctx, expiration, storeRI);
-                config.addClove(riClove);
-            } catch (Exception e) {
-                log.error("bundledRI sign failed, " + e);
-            }
-
-            if (storeRI.isValid()) {
-                log.debug("SUCCESSSSSSSSSSSSSSSSSSSSSSSSSSSSSSS");
-                log.debug("ri:" + storeRI);
+            && dest.getHash().equals(utils.getDestination(ctx.getProperty("custom.HSB64")).getHash())) {
+            log.debug("@YOUNG in OCMJ building self buildLeaseSetClove");
+            ClientManagerFacadeImpl managerFacade = (ClientManagerFacadeImpl) ctx.clientManager();
+            Destination self = utils.getDestination(ctx.getProperty("custom.selfHS"));
+            ClientConnectionRunner runner = managerFacade.getManager().getRunners().get(self);
+            if (runner == null) {
+                log.debug("@@YOUNG in OCMJ runner not ready, waiting...");
             } else {
-                log.debug("FAILLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL");
+                LeaseSet ls2 = runner.getLeaseSet(self.getHash());
+                if (ls2.verifySignature()) {
+                    log.debug("@@YOUNG in OCMJ ls2 verify SUCCESS");
+                } else {
+                    log.debug("@@YOUNG in OCMJ ls2 verify FAIL");
+                }
+                PayloadGarlicConfig leaseSetClove = buildLeaseSetClove(ctx, expiration, ls2);
+                config.addClove(leaseSetClove);
             }
-//            ctx.peerManager().setCapabilities(storeRI.getHash(), utils.getFormatTime());
-//            Hash peer = storeRI.getHash();
-//            PeerProfile prof = ctx.profileOrganizer().getProfile(peer);
-//            ProfilePersistenceHelper _persistenceHelper = new ProfilePersistenceHelper(ctx);
-//            _persistenceHelper.writeProfile(prof);
         }
 
         config.setRecipientPublicKey(recipientPK);

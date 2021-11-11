@@ -275,7 +275,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
             out.write(_encryptedData);
         }
     }
-    
+
     /**
      *  Overridden because we have a blinded key, not a dest
      */
@@ -347,7 +347,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
         _transientSigningPublicKey.writeBytes(out);
         _offlineSignature.writeBytes(out);
     }
-    
+
     /**
      *  Number of bytes, NOT including signature
      */
@@ -587,7 +587,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
     /**
      *  Throws IllegalStateException if not initialized.
      *
-     *  @param clientKey PrivateKey for DH or PSK, or null if none
+     *  @param csk PrivateKey for DH or PSK, or null if none
      *  @throws IllegalStateException
      */
     private void decrypt(PrivateKey csk) throws DataFormatException, IOException {
@@ -601,7 +601,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
     /**
      *  Throws IllegalStateException if not initialized.
      *
-     *  @param clientKey PrivateKey for DH or PSK, or null if none
+     *  @param csk PrivateKey for DH or PSK, or null if none
      *  @throws IllegalStateException
      */
     private void x_decrypt(PrivateKey csk) throws DataFormatException, IOException {
@@ -838,7 +838,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
      * @since 0.9.41
      */
     public void sign(SigningPrivateKey key, int authType, List<? extends SimpleDataStructure> clientKeys) throws DataFormatException {
-        // now sign inner with the unblinded key 
+        // now sign inner with the unblinded key
         // inner LS is always unpublished
         int saveFlags = _flags;
         setUnpublished();
@@ -863,7 +863,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
             throw new DataFormatException("Signature failed", ioe);
         }
         byte data[] = out.toByteArray();
-        // now sign outer with the blinded key 
+        // now sign outer with the blinded key
         _signature = DSAEngine.getInstance().sign(data, bkey);
         if (_signature == null)
             throw new DataFormatException("Signature failed with " + key.getType() + " key");
@@ -946,7 +946,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
                DataHelper.eq(_signature, ls.getSignature())
                && DataHelper.eq(_signingKey, ls.getSigningKey());
     }
-    
+
     /** the destination has enough randomness in it to use it by itself for speed */
     @Override
     public int hashCode() {
@@ -954,7 +954,7 @@ public class EncryptedLeaseSet extends LeaseSet2 {
             return 0;
         return _encryptionKey.hashCode();
     }
-    
+
     @Override
     public String toString() {
         StringBuilder buf = new StringBuilder(128);

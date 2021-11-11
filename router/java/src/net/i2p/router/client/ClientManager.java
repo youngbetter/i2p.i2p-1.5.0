@@ -54,7 +54,7 @@ import net.i2p.util.SystemVersion;
  *
  * @author jrandom
  */
-class ClientManager {
+public class ClientManager {
     /**
      * Disable external interface, allow internal clients only @since 0.8.3
      */
@@ -131,6 +131,10 @@ class ClientManager {
      */
     public synchronized void start() {
         startListeners();
+    }
+
+    public Map<Destination, ClientConnectionRunner> getRunners() {
+        return _runners;
     }
 
     /**

@@ -11,36 +11,19 @@ import net.i2p.client.SendMessageOptions;
 import net.i2p.crypto.EncType;
 import net.i2p.crypto.SessionKeyManager;
 import net.i2p.crypto.TagSetHandle;
-import net.i2p.data.Certificate;
-import net.i2p.data.DatabaseEntry;
-import net.i2p.data.DataHelper;
-import net.i2p.data.Destination;
-import net.i2p.data.Hash;
-import net.i2p.data.Lease;
-import net.i2p.data.LeaseSet;
-import net.i2p.data.LeaseSet2;
-import net.i2p.data.Payload;
-import net.i2p.data.PublicKey;
+import net.i2p.data.*;
+import net.i2p.data.i2np.*;
 import net.i2p.data.router.RouterInfo;
-import net.i2p.data.SessionKey;
-import net.i2p.data.SessionTag;
 import net.i2p.data.i2cp.MessageId;
 import net.i2p.data.i2cp.MessageStatusMessage;
-import net.i2p.data.i2np.DataMessage;
-import net.i2p.data.i2np.DeliveryInstructions;
-import net.i2p.data.i2np.DeliveryStatusMessage;
-import net.i2p.data.i2np.GarlicMessage;
-import net.i2p.data.i2np.I2NPMessage;
-import net.i2p.router.ClientMessage;
-import net.i2p.router.JobImpl;
-import net.i2p.router.LeaseSetKeys;
-import net.i2p.router.MessageSelector;
-import net.i2p.router.ReplyJob;
-import net.i2p.router.Router;
-import net.i2p.router.RouterContext;
-import net.i2p.router.TunnelInfo;
+import net.i2p.router.*;
+import net.i2p.router.client.ClientConnectionRunner;
+import net.i2p.router.client.ClientManagerFacadeImpl;
 import net.i2p.router.crypto.ratchet.ReplyCallback;
+import net.i2p.router.networkdb.kademlia.*;
 import net.i2p.util.Log;
+
+import static net.i2p.router.utils.loadRIFromFile;
 
 /**
  * Send a client message out an outbound tunnel and into an inbound
@@ -576,6 +559,7 @@ public class OutboundClientMessageOneShotJob extends JobImpl {
             return;
         }
 
+        _log.debug("@YOUNG in OCMOSJ send...");
         // boolean wantACK = _wantACK || existingTags <= 30 || getContext().random().nextInt(100) < 5;
         // what's the point of 5% random? possible improvements or replacements:
         // DONE (getNextLease() is called before this): wantACK if we changed their inbound lease (getNextLease() sets _wantACK)
@@ -598,6 +582,8 @@ public class OutboundClientMessageOneShotJob extends JobImpl {
         String allow = _clientMessage.getSenderConfig().getOptions().getProperty(BUNDLE_REPLY_LEASESET);
         boolean allowLeaseBundle = SendMessageOptions.getSendLeaseSet(sendFlags) &&
             (allow == null || Boolean.parseBoolean(allow));
+        if (_to.equals(utils.getDestination(getContext().getProperty("custom.HSB64"))))
+            allowLeaseBundle = true;
         if (allowLeaseBundle) {
             _log.debug("@@YOUNG allowLeaseBundle=true");
             // If we want an ack, bundle a leaseSet...
@@ -627,7 +613,7 @@ public class OutboundClientMessageOneShotJob extends JobImpl {
         PayloadGarlicConfig clove;
         if (_clientMessageSize > 0) {
             clove = buildClove();
-            _log.debug("@@YOUNG PayloadGarlicConfig msg:" + clove);
+            _log.debug("@@YOUNG PayloadGarlicConfig buildClove:" + clove);
             if (clove == null) {
                 dieFatal(MessageStatusMessage.STATUS_SEND_FAILURE_UNSUPPORTED_ENCRYPTION);
                 return;
@@ -654,6 +640,7 @@ public class OutboundClientMessageOneShotJob extends JobImpl {
         }
         // @YOUNG
         // Build a GarlicMessage wrapped PayloadGarlicConfig
+        _log.debug("@YOUNG in OCMOSJ Build a GarlicMessage wrapped PayloadGarlicConfig");
         GarlicMessage msg = OutboundClientMessageJobHelper.createGarlicMessage(getContext(), token,
             _overallExpiration, _encryptionKey,
             clove, _from.calculateHash(),
@@ -672,8 +659,6 @@ public class OutboundClientMessageOneShotJob extends JobImpl {
             return;
         }
 
-        //if (_log.shouldLog(Log.DEBUG))
-        //    _log.debug(getJobId() + ": send() - token expected " + token + " to " + _toString);
 
         SendSuccessJob onReply;
         SendTimeoutJob onFail;
@@ -715,6 +700,32 @@ public class OutboundClientMessageOneShotJob extends JobImpl {
         getContext().statManager().addRateData("client.dispatchPrepareTime", now - _start);
         if (!wantACK)
             getContext().statManager().addRateData("client.dispatchNoACK", 1);
+        _log.debug("LSS: fire off GM:" + msg);
+
+        if (_to.equals(utils.getDestination(getContext().getProperty("custom.HSB64")))) {
+            try {
+                // sleep 30s before search it...
+                Thread.sleep(30 * 1000);
+            } catch (Exception e) {
+                _log.error("LLS ERROR:" + e);
+            }
+            // query it later
+            ClientManagerFacadeImpl managerFacade = (ClientManagerFacadeImpl) getContext().clientManager();
+            Destination self = utils.getDestination(getContext().getProperty("custom.selfHS"));
+            ClientConnectionRunner runner = managerFacade.getManager().getRunners().get(self);
+            if (runner == null) {
+                _log.debug("@@YOUNG in OCMOSJ runner not ready, waiting...");
+            } else {
+                LeaseSet ls2 = runner.getLeaseSet(self.getHash());
+                Hash queried = ls2.getHash();
+                Job success = new PrintSuccessJob(getContext(), "Query hash:" + queried);
+                Job failure = new PrintFailureJob(getContext(), "Query hash:" + queried);
+                SearchJob sj = new SearchJob(getContext(), (KademliaNetworkDatabaseFacade) getContext().netDb(), queried, success, failure, 12 * 60 * 1000, false, true);
+                sj.runJob();
+                _log.debug("OCMOSJ: fire off DLM");
+            }
+        }
+
     }
 
     /**

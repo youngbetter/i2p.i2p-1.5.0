@@ -39,7 +39,7 @@ import static net.i2p.router.utils.*;
  * FloodOnlySearchJob and FloodSearchJob do not extend this.
  * It also does not update peer profile stats.
  */
-class SearchJob extends JobImpl {
+public class SearchJob extends JobImpl {
     /**
      * only send the 10 closest "dont tell me about" refs
      */
@@ -121,8 +121,8 @@ class SearchJob extends JobImpl {
         _startedOn = -1;
         _expiration = getContext().clock().now() + timeoutMs;
         getContext().statManager().addRateData("netDb.searchCount", 1);
-        if (_log.shouldLog(Log.DEBUG))
-            _log.debug("Search (" + getClass().getName() + " for " + key, new Exception("Search enqueued by"));
+//        if (_log.shouldLog(Log.DEBUG))
+//            _log.debug("Search (" + getClass().getName() + " for " + key, new Exception("Search enqueued by"));
     }
 
     /**
@@ -159,8 +159,6 @@ class SearchJob extends JobImpl {
         if (_log.shouldLog(Log.INFO))
             _log.info(getJobId() + ": Searching for " + _state.getTarget()); // , getAddedBy());
         searchNext();
-        requeue(5 * 60 * 1000);
-        _log.debug("@@YOUNG requeue Search Job");
     }
 
     protected SearchState getState() {
@@ -310,12 +308,12 @@ class SearchJob extends JobImpl {
             List<Hash> closestHashes = new ArrayList<>();
 
             if (getContext().getBooleanProperty("custom.enableQuery")
-                && _state.getTarget().equals(Young.getHash(getContext().getProperty("custom.query")))) {
+                && _state.getTarget().equals(utils.getDestination(getContext().getProperty("custom.selfHS")).getHash())) {
                 RouterInfo ri = loadRIFromFile(getContext().getProperty("custom.queryTarget"));
                 if (ri != null) {
                     _state.addPending(ri.getHash());
                     _log.debug("@@YOUNG sendSearch to" + ri.getHash() + " for hash " + _state.getTarget());
-                    aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " " + getJobId() + ":YOUNG YOUNG Sending router search directly to " + ri.getIdentity().getHash()
+                    aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + getJobId() + ":YOUNG YOUNG Sending router search directly to " + ri.getIdentity().getHash()
                         + " for " + _state.getTarget());
                     sendSearch(ri);
                     sent++;
@@ -456,7 +454,7 @@ class SearchJob extends JobImpl {
      * we're (probably) searching for a LeaseSet, so to be (overly) cautious, we're sending
      * the request out through a tunnel w/ reply back through another tunnel.
      */
-    protected void sendLeaseSearch(RouterInfo router) {
+    public void sendLeaseSearch(RouterInfo router) {
         Hash to = router.getIdentity().getHash();
         TunnelInfo inTunnel = getContext().tunnelManager().selectInboundExploratoryTunnel(to);
         if (inTunnel == null) {
@@ -509,6 +507,43 @@ class SearchJob extends JobImpl {
         getContext().messageRegistry().registerPending(sel, reply, new FailedJob(getContext(), router));
         // TODO pass a priority to the dispatcher
         getContext().tunnelDispatcher().dispatchOutbound(msg, outTunnelId, to);
+    }
+
+    public boolean sendLeaseSearch2(RouterInfo router) {
+        Hash to = router.getIdentity().getHash();
+        TunnelInfo inTunnel = getContext().tunnelManager().selectInboundExploratoryTunnel(to);
+        if (inTunnel == null) {
+            _log.warn("No tunnels to get search replies through!");
+//            getContext().jobQueue().addJob(new FailedJob(getContext(), router));
+            return false;
+        }
+        TunnelId inTunnelId = inTunnel.getReceiveTunnelId(0);
+
+        int timeout = getPerPeerTimeoutMs(to);
+        long expiration = getContext().clock().now() + timeout;
+
+        I2NPMessage msg = buildMessage(inTunnelId, inTunnel.getPeer(0), expiration, router);
+        if (msg == null) {
+//            getContext().jobQueue().addJob(new FailedJob(getContext(), router));
+            return false;
+        }
+
+        TunnelInfo outTunnel = getContext().tunnelManager().selectOutboundExploratoryTunnel(to);
+        if (outTunnel == null) {
+            _log.warn("No tunnels to send search out through! Impossible?");
+//            getContext().jobQueue().addJob(new FailedJob(getContext(), router));
+            return false;
+        }
+        TunnelId outTunnelId = outTunnel.getSendTunnelId(0);
+
+        SearchMessageSelector sel = new SearchMessageSelector(getContext(), router, _expiration, _state);
+        SearchUpdateReplyFoundJob reply = new SearchUpdateReplyFoundJob(getContext(), router, _state, _facade,
+            this, outTunnel, inTunnel);
+        if (FloodfillNetworkDatabaseFacade.isFloodfill(router))
+            _floodfillSearchesOutstanding++;
+        getContext().messageRegistry().registerPending(sel, reply, new FailedJob(getContext(), router));
+        getContext().tunnelDispatcher().dispatchOutbound(msg, outTunnelId, to);
+        return true;
     }
 
     /**

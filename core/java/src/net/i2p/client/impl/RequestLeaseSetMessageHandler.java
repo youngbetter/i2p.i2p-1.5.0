@@ -2,9 +2,9 @@ package net.i2p.client.impl;
 
 /*
  * free (adj.): unencumbered; not under the control of others
- * Written by jrandom in 2003 and released into the public domain 
- * with no warranty of any kind, either expressed or implied.  
- * It probably won't  make your computer catch on fire, or eat 
+ * Written by jrandom in 2003 and released into the public domain
+ * with no warranty of any kind, either expressed or implied.
+ * It probably won't  make your computer catch on fire, or eat
  * your children, but it might.  Use at your own risk.
  *
  */
@@ -88,7 +88,11 @@ class RequestLeaseSetMessageHandler extends HandlerImpl {
         // not clear why there would ever be more than one
         _existingLeaseSets = new ConcurrentHashMap<Destination, LeaseInfo>(4);
     }
-    
+
+    public Map<Destination, LeaseInfo> getExistingLeaseSets(){
+        return _existingLeaseSets;
+    }
+
     /**
      *  Do we send a LeaseSet or a LeaseSet2?
      *
@@ -286,7 +290,7 @@ class RequestLeaseSetMessageHandler extends HandlerImpl {
             _existingLeaseSets.put(dest, li);
         } else {
             if (_log.shouldLog(Log.DEBUG))
-                _log.debug("Caching the old leaseInfo keys for " 
+                _log.debug("Caching the old leaseInfo keys for "
                            + dest.toBase32());
         }
 
@@ -449,7 +453,7 @@ class RequestLeaseSetMessageHandler extends HandlerImpl {
     }
 
     /**
-     *  @param spk non-null [type:]b64[,[type:]b64]...
+     *  @param spkl non-null [type:]b64[,[type:]b64]...
      *  @param privKeys out parameter
      *  @since 0.9.39
      */
