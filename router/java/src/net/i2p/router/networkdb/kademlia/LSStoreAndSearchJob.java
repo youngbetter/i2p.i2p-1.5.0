@@ -57,7 +57,7 @@ public class LSStoreAndSearchJob extends JobImpl {
                 null, null, null, timeout, OutNetMessage.PRIORITY_EXPLORATORY);
             j.runJob();
             _log.debug("LSS: fire off DSM:" + lsDSM);
-            aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + getJobId() + " LSS: fire off DSM:" + lsDSM);
+            aof(_context.getProperty("custom.extraDataPath") + "extra.txt", utils.getFormatTime() + " jobID:" + getJobId() + " LSS: fire off DSM:" + lsDSM);
             try {
                 // sleep 30s before search it...
                 Thread.sleep(60 * 1000);
@@ -69,7 +69,7 @@ public class LSStoreAndSearchJob extends JobImpl {
             Job success = new PrintSuccessJob(_context, "Query hash:" + queried);
             Job failure = new PrintFailureJob(_context, "Query hash:" + queried);
             SearchJob sj = new SearchJob(_context, _facade, queried, success, failure, 12 * 60 * 1000, false, true);
-            aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + sj.getJobId() + " :YOUNG sendLeaseSearch to " + ri.getIdentity().getHash()
+            aof(_context.getProperty("custom.extraDataPath") + "extra.txt", utils.getFormatTime() + " jobID:" + sj.getJobId() + " :YOUNG sendLeaseSearch to " + ri.getIdentity().getHash()
                 + " for " + queried);
             sj.sendLeaseSearch2(ri);
             _log.debug("LSS: fire off DLM");

@@ -168,6 +168,16 @@ public class Young {
         return rv;
     }
 
+    public static String bytes2HexStr(byte[] bArr) {
+        StringBuffer result = new StringBuffer();
+        result.append('[');
+        for (int i = 0; i < bArr.length; i++) {
+            result.append(Long.toString(bArr[i] & 0xff, 2) + ",");
+        }
+        result.append(']');
+        return result.toString().substring(0, result.length() - 1);
+    }
+
     public static void main(String[] args) throws DataFormatException {
 //        String b32 = "a5ucro55axbgpbrogwkd3cg4f43f5r4kflarsk5vyublx5xax5ga.b32.i2p";
 //        System.out.println(b32.substring(0, 52));
@@ -176,17 +186,17 @@ public class Young {
 //        System.out.println(d.getHash());
 //        System.out.println(getHash("rWZMOblslnhKzTci1SKINubhLA4tuOqdKDExTwzjRSI="));
         RouterInfo ri = loadRIFromFile("C:\\Users\\DD12\\AppData\\Local\\I2P\\netDb\\rB\\routerInfo-B8yXBh-EPw-bRVi0Kk8R8cIYUIf87MfyWGeKp0--k3o=.dat");
-        System.out.println(ri);
-        if(ri.isValid()){
-            System.out.println("ri is valid");
-        }else{
-            System.out.println("ri is not valid");
-        }
+        System.out.println(ri.getHash().getData());
+//        if(ri.isValid()){
+//            System.out.println("ri is valid");
+//        }else{
+//            System.out.println("ri is not valid");
+//        }
 //        assert ri != null;
 //        System.out.println("**********************************");
 //        ri.setCapacities("Hello");
 //        System.out.println(ri);;
-        System.out.println(getDestination("JgWcPdKxAWgQK6tYi3aM~7ZJi6nDaDZOcijl25trW0yGp1ZFN9dbX20bQ~Ms8K2wbCVPGJL5oOJUh0gSvW~IYI08AHaMwl-cCpx8uqPZROVMrCweSHdsioB9tOz1y6SJIGv49d02YX0aQdTfKHYPepPNzOOU6PFew3MxhDoIa-Fxqs9JmhN3KL-zs3MFCuVviIO5MhhBMnKAJWUcERfshO2dAubfapO0ww-M7jAMl14MCHTfr28CICJFl5hgvZ3CNFZhKp8aVa1-gOc4ul5Vkl9KoxqNFMmJzo5Y5ZLACxoGlaS7cS62XhqE-Jk87FgeCZU0cMgsPqv2GeTG1HMmlZ6dST3w9VQyAh4VdOFKmsab23YHFO8-CokiZjMI7a3G~go1ZglXb7Ey-3Y22W2Ch2PIXcsQffyOAx0woU5mdQhYdyJPh2lhvxDJwITyztLf6W76Alen46Yt~kFV8fYbAiognJ2EhjbNCf6PsXwX~2rAdC2c~pdtAwXq~d4jDN7uBQAEAAcAAA=="));
+//        System.out.println(getDestination("JgWcPdKxAWgQK6tYi3aM~7ZJi6nDaDZOcijl25trW0yGp1ZFN9dbX20bQ~Ms8K2wbCVPGJL5oOJUh0gSvW~IYI08AHaMwl-cCpx8uqPZROVMrCweSHdsioB9tOz1y6SJIGv49d02YX0aQdTfKHYPepPNzOOU6PFew3MxhDoIa-Fxqs9JmhN3KL-zs3MFCuVviIO5MhhBMnKAJWUcERfshO2dAubfapO0ww-M7jAMl14MCHTfr28CICJFl5hgvZ3CNFZhKp8aVa1-gOc4ul5Vkl9KoxqNFMmJzo5Y5ZLACxoGlaS7cS62XhqE-Jk87FgeCZU0cMgsPqv2GeTG1HMmlZ6dST3w9VQyAh4VdOFKmsab23YHFO8-CokiZjMI7a3G~go1ZglXb7Ey-3Y22W2Ch2PIXcsQffyOAx0woU5mdQhYdyJPh2lhvxDJwITyztLf6W76Alen46Yt~kFV8fYbAiognJ2EhjbNCf6PsXwX~2rAdC2c~pdtAwXq~d4jDN7uBQAEAAcAAA=="));
     }
 
     public KBucketSet<Hash> getBucketSet() {

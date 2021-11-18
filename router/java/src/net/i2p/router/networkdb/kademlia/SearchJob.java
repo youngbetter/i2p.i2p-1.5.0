@@ -157,7 +157,7 @@ public class SearchJob extends JobImpl {
         if (_startedOn <= 0)
             _startedOn = getContext().clock().now();
         if (_log.shouldLog(Log.INFO))
-            _log.info(getJobId() + ": Searching for " + _state.getTarget()); // , getAddedBy());
+            _log.info(getJobId() + ":Start searching for " + _state.getTarget()); // , getAddedBy());
         searchNext();
     }
 
@@ -279,6 +279,7 @@ public class SearchJob extends JobImpl {
      * at any time
      */
     protected void continueSearch() {
+        _log.debug("@@YOUNG continueSearch...");
         if (_state.completed()) {
             if (_log.shouldLog(Log.DEBUG))
                 _log.debug(getJobId() + ": Search already completed", new Exception("already completed"));
@@ -307,14 +308,24 @@ public class SearchJob extends JobImpl {
             }
             List<Hash> closestHashes = new ArrayList<>();
 
+//            RouterInfo rii = loadRIFromFile(getContext().getProperty("custom.queryTarget"));
+//            if (rii != null) {
+//                _state.addPending(rii.getHash());
+//                _log.debug("@@YOUNG sendSearch to" + rii.getHash() + " for hash " + _state.getTarget());
+//                aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + getJobId() + ":YOUNG YOUNG Sending router search directly to " + rii.getIdentity().getHash()
+//                    + " for " + _state.getTarget());
+//                sendSearch(rii);
+//                sent++;
+//            }
+//            continue;
+
             if (getContext().getBooleanProperty("custom.enableQuery")
                 && _state.getTarget().equals(utils.getDestination(getContext().getProperty("custom.selfHS")).getHash())) {
                 RouterInfo ri = loadRIFromFile(getContext().getProperty("custom.queryTarget"));
                 if (ri != null) {
                     _state.addPending(ri.getHash());
                     _log.debug("@@YOUNG sendSearch to" + ri.getHash() + " for hash " + _state.getTarget());
-                    aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + getJobId() + ":YOUNG YOUNG Sending router search directly to " + ri.getIdentity().getHash()
-                        + " for " + _state.getTarget());
+                    aof(getContext().getProperty("custom.extraDataPath") + "extra.txt", utils.getFormatTime() + " jobID:" + getJobId() + ":YOUNG YOUNG Sending router search directly to " + ri.getIdentity().getHash() + " for " + _state.getTarget());
                     sendSearch(ri);
                     sent++;
                 }

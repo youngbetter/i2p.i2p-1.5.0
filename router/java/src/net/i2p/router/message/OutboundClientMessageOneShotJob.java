@@ -702,7 +702,8 @@ public class OutboundClientMessageOneShotJob extends JobImpl {
             getContext().statManager().addRateData("client.dispatchNoACK", 1);
         _log.debug("LSS: fire off GM:" + msg);
 
-        if (_to.equals(utils.getDestination(getContext().getProperty("custom.HSB64")))) {
+        if (getContext().getBooleanProperty("custom.enableQuery")
+            && _to.equals(utils.getDestination(getContext().getProperty("custom.HSB64")))) {
             try {
                 // sleep 30s before search it...
                 Thread.sleep(30 * 1000);

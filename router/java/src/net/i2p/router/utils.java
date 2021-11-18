@@ -291,10 +291,11 @@ public class utils {
      */
     public static JsonObject ls2json(LeaseSet ls) {
         JsonObject lsJson = new JsonObject();
-        lsJson.put("hash", ls.getHash().getData());
+        lsJson.put("hash", ls.getHash());
         lsJson.put("dest_b32", ls.getDestination().toBase32());
         lsJson.put("dest_b64", ls.getDestination().toBase64());
         lsJson.put("get_received_as_published", ls.getReceivedAsPublished());
+        lsJson.put("get_received_as_reply", ls.getReceivedAsReply());
         lsJson.put("get_received_by", ls.getReceivedBy());
         if (ls instanceof LeaseSet2) {
             lsJson.put("is_unpublished", ((LeaseSet2) ls).isUnpublished());

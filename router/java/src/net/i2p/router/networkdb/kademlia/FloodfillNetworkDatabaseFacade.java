@@ -24,8 +24,7 @@ import net.i2p.util.ConcurrentHashSet;
 import net.i2p.util.Log;
 import net.i2p.util.SystemVersion;
 
-import static net.i2p.router.utils.getDestination;
-import static net.i2p.router.utils.loadRIFromFile;
+import static net.i2p.router.utils.*;
 
 /**
  * The network database
@@ -117,9 +116,18 @@ public class FloodfillNetworkDatabaseFacade extends KademliaNetworkDatabaseFacad
         _context.jobQueue().addJob(rrj);
 
         // @@YOUNG store and search job
-        LSStoreAndSearchJob ssj = new LSStoreAndSearchJob(_context, this);
-        ssj.getTiming().setStartAfter(_context.clock().now() + 5 * 60 * 1000);
-        _context.jobQueue().addJob(ssj);
+        if (_context.getBooleanProperty("custom.enableQuery")) {
+            LSStoreAndSearchJob ssj = new LSStoreAndSearchJob(_context, this);
+            ssj.getTiming().setStartAfter(_context.clock().now() + 5 * 60 * 1000);
+            _context.jobQueue().addJob(ssj);
+        }
+
+        Hash queried = Young.getHash(_context.getProperty("custom.query"));
+        Job success = new PrintSuccessJob(_context, "Query hash:" + queried);
+        Job failure = new PrintFailureJob(_context, "Query hash:" + queried);
+        SearchJob sj = new SearchJob(_context, this, queried, success, failure, 12 * 60 * 1000, false, false);
+        sj.getTiming().setStartAfter(_context.clock().now() + 5 * 60 * 1000);
+        _context.jobQueue().addJob(sj);
     }
 
     @Override
@@ -187,6 +195,15 @@ public class FloodfillNetworkDatabaseFacade extends KademliaNetworkDatabaseFacad
         sendStore(localRouterInfo.getIdentity().calculateHash(), localRouterInfo, null, null, PUBLISH_TIMEOUT, null);
     }
 
+    /**
+     *
+     * @param key   RI/LS hash
+     * @param ds    RI/LS
+     * @param onSuccess job when success
+     * @param onFailure job when fail
+     * @param sendTimeout   timeout ms
+     * @param toIgnore  ignore RI set
+     */
     @Override
     public void sendStore(Hash key, DatabaseEntry ds, Job onSuccess, Job onFailure, long sendTimeout, Set<Hash> toIgnore) {
         // if we are a part of the floodfill netDb, don't send out our own leaseSets as part

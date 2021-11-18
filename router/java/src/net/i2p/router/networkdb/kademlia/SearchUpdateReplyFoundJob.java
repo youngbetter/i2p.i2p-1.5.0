@@ -87,7 +87,7 @@ class SearchUpdateReplyFoundJob extends JobImpl implements ReplyJob {
             DatabaseStoreMessage msg = (DatabaseStoreMessage) message;
             DatabaseEntry entry = msg.getEntry();
             if (entry.getHash().equals(usHash))
-                aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + _job.getJobId() + " DatabaseStoreMessage: " + msg);
+                aof(getContext().getProperty("custom.extraDataPath") + "extra.txt", utils.getFormatTime() + " jobID:" + _job.getJobId() + " DatabaseStoreMessage: " + msg);
             try {
                 _facade.store(msg.getKey(), entry);
                 getContext().profileManager().dbLookupSuccessful(_peer, timeToReply);
@@ -106,7 +106,7 @@ class SearchUpdateReplyFoundJob extends JobImpl implements ReplyJob {
             DatabaseSearchReplyMessage msg = (DatabaseSearchReplyMessage) message;
             _job.replyFound(msg, _peer);
             if (msg.getSearchKey().equals(usHash))
-                aof("C:\\Users\\DD12\\AppData\\Local\\I2P\\logs\\extra.txt", utils.getFormatTime() + " jobID:" + _job.getJobId() + " DatabaseSearchReplyMessage:" + msg);
+                aof(getContext().getProperty("custom.extraDataPath") + "extra.txt", utils.getFormatTime() + " jobID:" + _job.getJobId() + " DatabaseSearchReplyMessage:" + msg);
         } else {
             if (_log.shouldLog(Log.ERROR))
                 _log.error(getJobId() + ": What?! Reply job matched a strange message: " + message);
